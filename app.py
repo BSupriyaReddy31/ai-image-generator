@@ -79,7 +79,8 @@ except (KeyError, FileNotFoundError):
 # --- AI LOGIC (STABLE DIFFUSION VIA HUGGING FACE) ---
 def generate_brand_image(product, brand_colors, vibe):
     # We use Stable Diffusion XL, the best open-source model for advertising images
-    API_URL = "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0"
+    # API_URL = "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0"
+    API_URL = "https://router.huggingface.co/hf-inference/models/stabilityai/stable-diffusion-xl-base-1.0"
     headers = {"Authorization": f"Bearer {hf_api_key}"}
     
     # The "Secret Sauce" Prompt Engineering
