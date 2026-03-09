@@ -27,14 +27,11 @@ custom_css = """
     
     .stApp { background-color: #fafafa; color: #1a1a1a !important; }
     
-    /* Center the main title nicely */
     .main-header { text-align: center; margin-top: 2rem; margin-bottom: 0.5rem; color: #111827; font-weight: 700; font-size: 3rem;}
     .sub-header { text-align: center; color: #6b7280; font-size: 1.1rem; margin-bottom: 3rem; }
 
-    /* Hide default header/footer */
     #MainMenu {visibility: hidden;} footer {visibility: hidden;} header {visibility: hidden;}
 
-    /* Make the text area look like a modern search/prompt bar */
     .stTextArea textarea {
         background-color: #ffffff !important;
         border: 2px solid #e5e7eb !important;
@@ -49,7 +46,6 @@ custom_css = """
         box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1) !important;
     }
 
-    /* Soft, friendly generate button */
     .stButton>button {
         background-color: #6366f1; color: #ffffff !important;
         border: none; border-radius: 12px; font-weight: 600; font-size: 1.1rem;
@@ -61,15 +57,6 @@ custom_css = """
         box-shadow: 0 6px 16px rgba(99, 102, 241, 0.3);
     }
     
-    /* Inspiration Chips (Secondary Buttons) */
-    .inspiration-row .stButton>button {
-        background-color: #f3f4f6; color: #4b5563 !important;
-        border: 1px solid #e5e7eb; border-radius: 20px; font-weight: 500; font-size: 0.9rem;
-        padding: 5px 15px; box-shadow: none; margin-top: 0;
-    }
-    .inspiration-row .stButton>button:hover { background-color: #e5e7eb; color: #111827 !important; transform: none; }
-    
-    /* Image Display Card */
     .image-card {
         background: #ffffff; padding: 20px; border-radius: 20px;
         box-shadow: 0 10px 30px rgba(0,0,0,0.08); border: 1px solid #f3f4f6;
@@ -120,10 +107,6 @@ def render_image(user_input):
     except Exception as e:
         return "Error: Could not connect to image server."
 
-# --- CALLBACK FUNCTIONS ---
-def set_prompt(text):
-    st.session_state.prompt_input = text
-
 # --- APP LAYOUT (Top-to-Bottom Flow) ---
 st.markdown("<h1 class='main-header'>✨ AI Image Studio</h1>", unsafe_allow_html=True)
 st.markdown("<p class='sub-header'>Describe your vision. Let AI do the rest.</p>", unsafe_allow_html=True)
@@ -131,25 +114,12 @@ st.markdown("<p class='sub-header'>Describe your vision. Let AI do the rest.</p>
 # 1. The Prompt Bar
 user_idea = st.text_area("What would you like to create?", 
                          value=st.session_state.prompt_input, 
-                         placeholder="e.g., A floating glowing orb in a dark forest...", 
+                         placeholder="e.g., A minimalist black coffee cup on a marble table with bright morning lighting...", 
                          height=100, label_visibility="collapsed")
 
-# 2. Inspiration Chips (Natural guidance for the user)
-st.markdown("<div class='inspiration-row'>", unsafe_allow_html=True)
-col1, col2, col3, col4 = st.columns(4)
-with col1:
-    st.button("☕ Cozy Coffee", on_click=set_prompt, args=("A cozy cup of coffee on a wooden table, rainy window background",))
-with col2:
-    st.button("🎧 Tech Gadget", on_click=set_prompt, args=("Sleek minimalist wireless headphones, neon studio lighting",))
-with col3:
-    st.button("🌿 Organic Skincare", on_click=set_prompt, args=("A glass bottle of skincare serum on a wet stone, natural sunlight",))
-with col4:
-    st.button("🚀 Cyberpunk City", on_click=set_prompt, args=("A futuristic cyberpunk street at night, glowing neon signs, rainy",))
-st.markdown("</div>", unsafe_allow_html=True)
-
-# 3. Generate Button
+# 2. Generate Button
 st.markdown("<br>", unsafe_allow_html=True)
-_, center_col, _ = st.columns([1, 2, 1]) # Center the button
+_, center_col, _ = st.columns([1, 2, 1]) 
 with center_col:
     if st.button("✨ Generate Masterpiece", type="primary"):
         if not user_idea:
@@ -157,7 +127,7 @@ with center_col:
         else:
             st.session_state.is_generating = True
 
-# 4. Results Section (Appears naturally below)
+# 3. Results Section
 if st.session_state.is_generating:
     with st.spinner("🎨 Weaving the pixels together..."):
         result = render_image(user_idea)
@@ -166,7 +136,7 @@ if st.session_state.is_generating:
             st.error(result)
         else:
             st.session_state.current_image = result
-            st.session_state.prompt_input = user_idea # Lock in the text they typed
+            st.session_state.prompt_input = user_idea
             
     st.session_state.is_generating = False
 
@@ -174,7 +144,6 @@ if st.session_state.current_image:
     st.markdown("<div class='image-card'>", unsafe_allow_html=True)
     st.image(st.session_state.current_image, use_container_width=True)
     
-    # Clean download button right below the image
     buf = io.BytesIO()
     st.session_state.current_image.save(buf, format="PNG")
     
