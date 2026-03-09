@@ -78,16 +78,26 @@ except (KeyError, FileNotFoundError):
 
 # --- AI LOGIC (STABLE DIFFUSION VIA HUGGING FACE) ---
 def generate_brand_image(product, brand_colors, vibe):
-    # We use Stable Diffusion XL, the best open-source model for advertising images
-    # API_URL = "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0"
     API_URL = "https://router.huggingface.co/hf-inference/models/stabilityai/stable-diffusion-xl-base-1.0"
     headers = {"Authorization": f"Bearer {hf_api_key}"}
     
-    # The "Secret Sauce" Prompt Engineering
-    master_prompt = f"Professional product photography of a {product}. The primary brand colors are {brand_colors}. The visual style and vibe is {vibe}. 8k resolution, highly detailed, marketing advertisement, commercial studio lighting, clean elegant background."
+    # 1. The Positive Prompt (What we WANT)
+    master_prompt = f"Professional photography of a {product}. The primary brand colors are {brand_colors}. The visual style and vibe is {vibe}. 8k resolution, highly detailed, marketing advertisement, commercial studio lighting, clean elegant background."
+    
+    # 2. The Negative Prompt (What we DO NOT WANT)
+    # This stops the AI from generating clumsy limbs, extra fingers, or weird distortions!
+    negative_prompt = "ugly, deformed, clumsy, extra limbs, bad anatomy, distorted proportions, weird legs, bad hands, missing fingers, blurry, text, watermark, low quality, cartoon, mutated"
+    
+    # 3. The Payload (Sending both to the API)
+    payload = {
+        "inputs": master_prompt,
+        "parameters": {
+            "negative_prompt": negative_prompt
+        }
+    }
     
     try:
-        response = requests.post(API_URL, headers=headers, json={"inputs": master_prompt})
+        response = requests.post(API_URL, headers=headers, json=payload)
         if response.status_code == 200:
             image_bytes = response.content
             return Image.open(io.BytesIO(image_bytes))
