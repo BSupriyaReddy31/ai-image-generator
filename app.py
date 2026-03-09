@@ -12,8 +12,6 @@ st.set_page_config(page_title="AI Image Studio", page_icon="✨", layout="center
 # --- SESSION STATE MEMORY ---
 if "current_image" not in st.session_state:
     st.session_state.current_image = None
-if "prompt_input" not in st.session_state:
-    st.session_state.prompt_input = ""
 if "is_generating" not in st.session_state:
     st.session_state.is_generating = False
 
@@ -81,19 +79,22 @@ text_model = genai.GenerativeModel('gemini-2.5-flash')
 
 # --- INVISIBLE AI LOGIC ---
 def render_image(user_input):
-    system_prompt = f"The user wants an image of: '{user_input}'. Write a detailed, comma-separated prompt for Stable Diffusion XL. Include professional photography terms, lighting, and high quality keywords. Do not include introductory text."
+    # FIX 1: Aggressively force Gemini to add photorealistic terminology
+    system_prompt = f"The user wants an image of: '{user_input}'. Write a highly detailed, comma-separated prompt for Stable Diffusion XL. You MUST include terms like: 'photorealistic, raw photo, 8k UHD, DSLR, natural skin texture, lifelike'. Do not include introductory text."
     
     try:
         enhanced_prompt = text_model.generate_content(system_prompt).text.strip()
     except Exception:
-        enhanced_prompt = f"Professional high quality photo of {user_input}, 8k resolution, highly detailed."
+        enhanced_prompt = f"Raw photo, photorealistic, {user_input}, 8k resolution, natural lighting, highly detailed."
 
     API_URL = "https://router.huggingface.co/hf-inference/models/stabilityai/stable-diffusion-xl-base-1.0"
     headers = {"Authorization": f"Bearer {hf_api_key}"}
+    
+    # FIX 2: Block plastic/dummy faces in the negative prompt
     payload = {
         "inputs": enhanced_prompt,
         "parameters": {
-            "negative_prompt": "ugly, deformed, bad anatomy, weird legs, bad hands, missing fingers, blurry, text, watermark, low quality",
+            "negative_prompt": "plastic, dummy, doll, CGI, 3d render, artificial, mannequin, overly smooth skin, ugly, deformed, bad anatomy, weird legs, bad hands, missing fingers, blurry, text, watermark",
             "guidance_scale": 7.5 
         }
     }
@@ -111,10 +112,10 @@ def render_image(user_input):
 st.markdown("<h1 class='main-header'>✨ AI Image Studio</h1>", unsafe_allow_html=True)
 st.markdown("<p class='sub-header'>Describe your vision. Let AI do the rest.</p>", unsafe_allow_html=True)
 
-# 1. The Prompt Bar
+# FIX 3: Replaced "value=" with "key=" to stop the text from reverting
 user_idea = st.text_area("What would you like to create?", 
-                         value=st.session_state.prompt_input, 
-                         placeholder="e.g., A minimalist black coffee cup on a marble table with bright morning lighting...", 
+                         key="user_prompt", 
+                         placeholder="e.g., A photorealistic portrait of a woman drinking coffee in a sunlit cafe...", 
                          height=100, label_visibility="collapsed")
 
 # 2. Generate Button
@@ -122,7 +123,7 @@ st.markdown("<br>", unsafe_allow_html=True)
 _, center_col, _ = st.columns([1, 2, 1]) 
 with center_col:
     if st.button("✨ Generate Masterpiece", type="primary"):
-        if not user_idea:
+        if not st.session_state.user_prompt:
             st.warning("Please describe what you want to generate first!")
         else:
             st.session_state.is_generating = True
@@ -130,13 +131,12 @@ with center_col:
 # 3. Results Section
 if st.session_state.is_generating:
     with st.spinner("🎨 Weaving the pixels together..."):
-        result = render_image(user_idea)
+        result = render_image(st.session_state.user_prompt)
         
         if isinstance(result, str):
             st.error(result)
         else:
             st.session_state.current_image = result
-            st.session_state.prompt_input = user_idea
             
     st.session_state.is_generating = False
 
