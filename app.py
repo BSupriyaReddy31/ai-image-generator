@@ -79,31 +79,29 @@ text_model = genai.GenerativeModel('gemini-2.5-flash')
 
 # --- INVISIBLE AI LOGIC ---
 def render_image(user_input):
-    # UPGRADE 1: Adjusted Gemini's prompt engineering to match FLUX's natural language preference
-    system_prompt = f"The user wants an image of: '{user_input}'. Write a highly detailed, descriptive paragraph prompt for a next-generation AI image model like FLUX. Include precise details about lighting, camera angle, atmosphere, and EXACT text placement if the user requested text. Do not include introductory text."
+    # 1. Gemini engineers the perfect prompt
+    system_prompt = f"The user wants an image of: '{user_input}'. Write a highly detailed, descriptive paragraph prompt for a next-generation AI image model. Include precise details about lighting, camera angle, atmosphere, and EXACT text placement if the user requested text. Do not include introductory text."
     
     try:
         enhanced_prompt = text_model.generate_content(system_prompt).text.strip()
     except Exception:
         enhanced_prompt = f"A highly detailed, photorealistic image of {user_input}, 8k resolution, professional lighting."
 
-    # UPGRADE 2: Switched to the FLUX.1-schnell engine
-    API_URL = "https://router.huggingface.co/hf-inference/models/black-forest-labs/FLUX.1-schnell"
-    headers = {"Authorization": f"Bearer {hf_api_key}"}
+    # 2. The Ultimate Free API bypass (Pollinations AI)
+    import urllib.parse
+    encoded_prompt = urllib.parse.quote(enhanced_prompt)
     
-    # UPGRADE 3: Removed negative prompt and parameters (FLUX doesn't need them)
-    payload = {
-        "inputs": enhanced_prompt
-    }
+    # We request a clean 1024x1024 image with no logos
+    image_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=1024&height=1024&nologo=true"
     
     try:
-        response = requests.post(API_URL, headers=headers, json=payload)
+        response = requests.get(image_url)
         if response.status_code == 200:
             return Image.open(io.BytesIO(response.content))
         else:
-            return f"Error {response.status_code}: Please wait a moment and try again."
+            return f"Error {response.status_code}: The free image server is currently busy."
     except Exception as e:
-        return "Error: Could not connect to image server."
+        return "Error: Could not connect to the free image server."
 
 # --- APP LAYOUT (Top-to-Bottom Flow) ---
 st.markdown("<h1 class='main-header'>✨ AI Image Studio</h1>", unsafe_allow_html=True)
