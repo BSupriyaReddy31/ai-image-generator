@@ -79,24 +79,21 @@ text_model = genai.GenerativeModel('gemini-2.5-flash')
 
 # --- INVISIBLE AI LOGIC ---
 def render_image(user_input):
-    # FIX 1: Aggressively force Gemini to add photorealistic terminology
-    system_prompt = f"The user wants an image of: '{user_input}'. Write a highly detailed, comma-separated prompt for Stable Diffusion XL. You MUST include terms like: 'photorealistic, raw photo, 8k UHD, DSLR, natural skin texture, lifelike'. Do not include introductory text."
+    # UPGRADE 1: Adjusted Gemini's prompt engineering to match FLUX's natural language preference
+    system_prompt = f"The user wants an image of: '{user_input}'. Write a highly detailed, descriptive paragraph prompt for a next-generation AI image model like FLUX. Include precise details about lighting, camera angle, atmosphere, and EXACT text placement if the user requested text. Do not include introductory text."
     
     try:
         enhanced_prompt = text_model.generate_content(system_prompt).text.strip()
     except Exception:
-        enhanced_prompt = f"Raw photo, photorealistic, {user_input}, 8k resolution, natural lighting, highly detailed."
+        enhanced_prompt = f"A highly detailed, photorealistic image of {user_input}, 8k resolution, professional lighting."
 
-    API_URL = "https://router.huggingface.co/hf-inference/models/stabilityai/stable-diffusion-xl-base-1.0"
+    # UPGRADE 2: Switched to the FLUX.1-schnell engine
+    API_URL = "https://router.huggingface.co/hf-inference/models/black-forest-labs/FLUX.1-schnell"
     headers = {"Authorization": f"Bearer {hf_api_key}"}
     
-    # FIX 2: Block plastic/dummy faces in the negative prompt
+    # UPGRADE 3: Removed negative prompt and parameters (FLUX doesn't need them)
     payload = {
-        "inputs": enhanced_prompt,
-        "parameters": {
-            "negative_prompt": "plastic, dummy, doll, CGI, 3d render, artificial, mannequin, overly smooth skin, ugly, deformed, bad anatomy, weird legs, bad hands, missing fingers, blurry, text, watermark",
-            "guidance_scale": 7.5 
-        }
+        "inputs": enhanced_prompt
     }
     
     try:
@@ -104,7 +101,7 @@ def render_image(user_input):
         if response.status_code == 200:
             return Image.open(io.BytesIO(response.content))
         else:
-            return f"Error: API returned {response.status_code}"
+            return f"Error {response.status_code}: Please wait a moment and try again."
     except Exception as e:
         return "Error: Could not connect to image server."
 
@@ -112,10 +109,9 @@ def render_image(user_input):
 st.markdown("<h1 class='main-header'>✨ AI Image Studio</h1>", unsafe_allow_html=True)
 st.markdown("<p class='sub-header'>Describe your vision. Let AI do the rest.</p>", unsafe_allow_html=True)
 
-# FIX 3: Replaced "value=" with "key=" to stop the text from reverting
 user_idea = st.text_area("What would you like to create?", 
                          key="user_prompt", 
-                         placeholder="e.g., A photorealistic portrait of a woman drinking coffee in a sunlit cafe...", 
+                         placeholder="e.g., A breathtaking advertisement poster with the word 'AATA' in the center...", 
                          height=100, label_visibility="collapsed")
 
 # 2. Generate Button
@@ -130,7 +126,7 @@ with center_col:
 
 # 3. Results Section
 if st.session_state.is_generating:
-    with st.spinner("🎨 Weaving the pixels together..."):
+    with st.spinner("🎨 Weaving the pixels together using FLUX.1..."):
         result = render_image(st.session_state.user_prompt)
         
         if isinstance(result, str):
