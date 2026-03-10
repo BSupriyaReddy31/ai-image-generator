@@ -41,9 +41,11 @@ st.markdown(custom_css, unsafe_allow_html=True)
 # --- SETUP API KEYS ---
 load_dotenv()
 try:
-    gemini_api_key = st.secrets["GEMINI_API_KEY"]
-except (KeyError, FileNotFoundError):
-    gemini_api_key = os.getenv("GEMINI_API_KEY")
+    gemini_api_key = st.secrets.get("GEMINI_API_KEY", os.getenv("GEMINI_API_KEY"))
+    hf_api_key = st.secrets.get("HF_API_KEY", os.getenv("HF_API_KEY"))
+except Exception:
+    gemini_api_key = None
+    hf_api_key = None
 
 # Initialize the NEW Gemini SDK
 client = None
@@ -92,32 +94,44 @@ def apply_overlay_text(image, text, position):
     
     return img_copy
 
-# --- FEATURE 3: PARALLEL IMAGE GENERATION ---
+# --- FEATURE 3: THE FAILOVER ROUTER ---
 def fetch_single_image(prompt, seed):
     encoded_prompt = urllib.parse.quote(prompt)
-    # UPDATED: Using the new Pollinations /p/ endpoint
-    url = f"https://pollinations.ai/p/{encoded_prompt}?width=1024&height=1024&nologo=true&seed={seed}"
+    
+    # ATTEMPT 1: The Pollinations API
     try:
-        res = requests.get(url, timeout=30) # Added timeout for stability
-        if res.status_code == 200:
-            return Image.open(io.BytesIO(res.content))
-    except Exception as e:
-        print(f"Fetch Error: {e}")
-        pass
+        url_1 = f"https://pollinations.ai/p/{encoded_prompt}?width=1024&height=1024&nologo=true&seed={seed}"
+        res1 = requests.get(url_1, timeout=15)
+        if res1.status_code == 200:
+            return Image.open(io.BytesIO(res1.content))
+    except Exception:
+        pass # If it fails, silently move to Attempt 2
+
+    # ATTEMPT 2: Hugging Face Fallback (SDXL)
+    if hf_api_key:
+        try:
+            url_2 = "https://router.huggingface.co/hf-inference/models/stabilityai/stable-diffusion-xl-base-1.0"
+            headers = {"Authorization": f"Bearer {hf_api_key}"}
+            payload = {"inputs": f"{prompt}, random variation {seed}"}
+            res2 = requests.post(url_2, headers=headers, json=payload, timeout=20)
+            if res2.status_code == 200:
+                return Image.open(io.BytesIO(res2.content))
+        except Exception as e:
+            print(f"HF Backup Failed: {e}")
+            pass
+            
     return None
 
 def generate_magic_variations(user_input, overlay_text, text_position):
     system_prompt = f"The user wants an image of: '{user_input}'. Write a highly detailed, descriptive paragraph prompt for a next-generation AI image model. Focus heavily on lighting, textures, and realism. Do not include introductory text."
     
     try:
-        # UPDATED: Using the new Gemini generation syntax
         response = client.models.generate_content(
             model="gemini-2.5-flash",
             contents=system_prompt
         )
         enhanced_prompt = response.text.strip()
-    except Exception as e:
-        print(f"Gemini Error: {e}")
+    except Exception:
         enhanced_prompt = f"A highly detailed, photorealistic image of {user_input}, 8k resolution, professional lighting."
 
     seeds = [random.randint(1, 999999) for _ in range(3)]
@@ -161,11 +175,11 @@ with center_col:
             st.session_state.is_generating = True
 
 if st.session_state.is_generating:
-    with st.spinner("🎨 Generating 3 unique masterpieces simultaneously..."):
+    with st.spinner("🎨 Generating 3 unique masterpieces simultaneously (Routing to best available server)..."):
         results = generate_magic_variations(st.session_state.user_prompt, overlay_text, text_position)
         
         if not results:
-            st.error("Error: Could not connect to the image server. Please try again.")
+            st.error("Error: All image servers are currently busy. Please try again in a few minutes.")
         else:
             st.session_state.generated_images = results
             
