@@ -1,5 +1,5 @@
 import streamlit as st
-from google import genai  # NEW: Updated SDK Import
+from google import genai  # THE NEW SDK
 import requests
 import io
 import urllib.parse
@@ -45,7 +45,7 @@ try:
 except (KeyError, FileNotFoundError):
     gemini_api_key = os.getenv("GEMINI_API_KEY")
 
-# NEW: Initializing the updated Gemini Client
+# Initialize the NEW Gemini SDK
 client = None
 if gemini_api_key:
     client = genai.Client(api_key=gemini_api_key)
@@ -95,13 +95,14 @@ def apply_overlay_text(image, text, position):
 # --- FEATURE 3: PARALLEL IMAGE GENERATION ---
 def fetch_single_image(prompt, seed):
     encoded_prompt = urllib.parse.quote(prompt)
-    # NEW: Pointing to the updated Pollinations API
-    url = f"https://gen.pollinations.ai/image/{encoded_prompt}?width=1024&height=1024&nologo=true&seed={seed}"
+    # UPDATED: Using the new Pollinations /p/ endpoint
+    url = f"https://pollinations.ai/p/{encoded_prompt}?width=1024&height=1024&nologo=true&seed={seed}"
     try:
-        res = requests.get(url)
+        res = requests.get(url, timeout=30) # Added timeout for stability
         if res.status_code == 200:
             return Image.open(io.BytesIO(res.content))
-    except Exception:
+    except Exception as e:
+        print(f"Fetch Error: {e}")
         pass
     return None
 
@@ -109,13 +110,14 @@ def generate_magic_variations(user_input, overlay_text, text_position):
     system_prompt = f"The user wants an image of: '{user_input}'. Write a highly detailed, descriptive paragraph prompt for a next-generation AI image model. Focus heavily on lighting, textures, and realism. Do not include introductory text."
     
     try:
-        # NEW: Using the updated client.models.generate_content syntax
+        # UPDATED: Using the new Gemini generation syntax
         response = client.models.generate_content(
             model="gemini-2.5-flash",
             contents=system_prompt
         )
         enhanced_prompt = response.text.strip()
-    except Exception:
+    except Exception as e:
+        print(f"Gemini Error: {e}")
         enhanced_prompt = f"A highly detailed, photorealistic image of {user_input}, 8k resolution, professional lighting."
 
     seeds = [random.randint(1, 999999) for _ in range(3)]
