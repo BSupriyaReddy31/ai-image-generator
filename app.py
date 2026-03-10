@@ -94,31 +94,38 @@ def apply_overlay_text(image, text, position):
     
     return img_copy
 
-# --- FEATURE 3: THE FAILOVER ROUTER ---
+# --- FEATURE 3: THE BULLETPROOF FAILOVER ROUTER ---
 def fetch_single_image(prompt, seed):
     encoded_prompt = urllib.parse.quote(prompt)
     
     # ATTEMPT 1: The Pollinations API
     try:
         url_1 = f"https://pollinations.ai/p/{encoded_prompt}?width=1024&height=1024&nologo=true&seed={seed}"
-        res1 = requests.get(url_1, timeout=15)
+        res1 = requests.get(url_1, timeout=10)
         if res1.status_code == 200:
             return Image.open(io.BytesIO(res1.content))
-    except Exception:
-        pass # If it fails, silently move to Attempt 2
+    except Exception as e:
+        print(f"Pollinations Down: {e}")
+        pass 
 
-    # ATTEMPT 2: Hugging Face Fallback (SDXL)
+    # ATTEMPT 2: Official Hugging Face API
     if hf_api_key:
         try:
-            url_2 = "https://router.huggingface.co/hf-inference/models/stabilityai/stable-diffusion-xl-base-1.0"
+            # FIX: Switched to the official api-inference URL instead of the router
+            url_2 = "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0"
             headers = {"Authorization": f"Bearer {hf_api_key}"}
-            payload = {"inputs": f"{prompt}, random variation {seed}"}
+            payload = {"inputs": f"{prompt}, highly detailed variation {seed}"}
+            
             res2 = requests.post(url_2, headers=headers, json=payload, timeout=20)
             if res2.status_code == 200:
                 return Image.open(io.BytesIO(res2.content))
+            else:
+                print(f"HF Error {res2.status_code}: {res2.text}")
         except Exception as e:
             print(f"HF Backup Failed: {e}")
             pass
+    else:
+        print("CRITICAL: HF_API_KEY is missing from Streamlit secrets! Cannot use fallback.")
             
     return None
 
